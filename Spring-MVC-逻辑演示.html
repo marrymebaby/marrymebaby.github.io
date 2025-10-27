@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring MVC 逻辑演示</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .animation-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 400px;
+            margin-bottom: 30px;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .component {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            transition: all 0.5s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .component.active {
+            background: #007bff;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        }
+
+        .component h3 {
+            margin: 0 0 10px 0;
+        }
+
+        .component-icon {
+            width: 80px;
+            height: 80px;
+            background: #e9ecef;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px auto;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .component.active .component-icon {
+            background: #0056b3;
+            color: white;
+        }
+
+        .arrow {
+            font-size: 30px;
+            color: #6c757d;
+            transition: color 0.5s ease;
+        }
+
+        .arrow.active {
+            color: #28a745;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .flow-line {
+            position: absolute;
+            height: 3px;
+            background: #6c757d;
+            transition: background-color 0.5s ease;
+        }
+
+        .flow-line.active {
+            background: #28a745;
+            box-shadow: 0 0 10px #28a745;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .explanation {
+            background: #e9ecef;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+            min-height: 150px;
+        }
+
+        .explanation h2 {
+            color: #007bff;
+            margin-top: 0;
+        }
+
+        .step-indicator {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #6c757d;
+        }
+
+        .step-indicator span {
+            color: #007bff;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .highlight {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        /* Spring MVC 组件样式 */
+        .dispatcher-servlet { background: linear-gradient(45deg, #ff6b6b, #ee5a24); }
+        .handler-mapping { background: linear-gradient(45deg, #4834d4, #686de0); }
+        .controller { background: linear-gradient(45deg, #00d2d3, #54a0ff); }
+        .model-view { background: linear-gradient(45deg, #ff9ff3, #f368e0); }
+        .view-resolver { background: linear-gradient(45deg, #feca57, #ff9ff3); }
+        .view { background: linear-gradient(45deg, #1dd1a1, #10ac84); }
+
+        .component.active .component-icon {
+            animation: rotate 2s infinite linear;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .data-flow {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ffc107;
+            border-radius: 50%;
+            transition: all 1s ease;
+            opacity: 0;
+        }
+
+        .data-flow.show {
+            opacity: 1;
+        }
+
+        .data-flow.move {
+            animation: moveFlow 1s ease-in-out;
+        }
+
+        @keyframes moveFlow {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Spring MVC 工作流程演示</h1>
+        
+        <div class="controls">
+            <button id="prevBtn" class="btn" disabled>上一步</button>
+            <button id="nextBtn" class="btn">开始演示</button>
+            <button id="resetBtn" class="btn">重置</button>
+        </div>
+
+        <div class="step-indicator">
+            当前步骤: <span id="currentStep">0</span>/7
+        </div>
+
+        <div class="animation-container" id="animationContainer">
+            <!-- 组件将通过JavaScript动态创建 -->
+        </div>
+
+        <div class="explanation">
+            <h2>流程说明</h2>
+            <div id="explanationText">
+                点击"下一步"开始Spring MVC流程演示
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SpringMVCDemo {
+            constructor() {
+                this.currentStep = 0;
+                this.totalSteps = 7;
+                this.components = [];
+                this.flowLines = [];
+                this.dataFlows = [];
+                
+                this.init();
+                this.bindEvents();
+            }
+
+            init() {
+                this.createComponents();
+                this.updateUI();
+            }
+
+            createComponents() {
+                const container = document.getElementById('animationContainer');
+                container.innerHTML = '';
+
+                // 创建Spring MVC组件
+                const componentData = [
+                    { id: 'client', name: '客户端', icon: '📱' },
+                    { id: 'dispatcher', name: 'DispatcherServlet', icon: '🔌' },
+                    { id: 'mapping', name: 'HandlerMapping', icon: '🗺️' },
+                    { id: 'controller', name: 'Controller', icon: '⚙️' },
+                    { id: 'modelview', name: 'ModelAndView', icon: '📄' },
+                    { id: 'resolver', name: 'ViewResolver', icon: '🔍' },
+                    { id: 'view', name: 'View', icon: '🖥️' }
+                ];
+
+                // 创建组件
+                componentData.forEach((data, index) => {
+                    const component = document.createElement('div');
+                    component.className = 'component';
+                    component.id = data.id;
+                    component.innerHTML = `
+                        <div class="component-icon" style="background: ${this.getComponentColor(index)}">${data.icon}</div>
+                        <h3>${data.name}</h3>
+                    `;
+                    container.appendChild(component);
+                    this.components.push(component);
+                });
+
+                // 创建箭头和流程线
+                this.createArrows();
+            }
+
+            getComponentColor(index) {
+                const colors = [
+                    '#6c757d', // 客户端
+                    '#ff6b6b', // DispatcherServlet
+                    '#4834d4', // HandlerMapping
+                    '#00d2d3', // Controller
+                    '#ff9ff3', // ModelAndView
+                    '#feca57', // ViewResolver
+                    '#1dd1a1'  // View
+                ];
+                return colors[index] || '#6c757d';
+            }
+
+            createArrows() {
+                const container = document.getElementById('animationContainer');
+                
+                // 创建箭头和连接线
+                for (let i = 0; i < this.components.length - 1; i++) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'arrow';
+                    arrow.id = `arrow${i}`;
+                    arrow.innerHTML = '→';
+                    arrow.style.position = 'absolute';
+                    container.appendChild(arrow);
+                    this.flowLines.push(arrow);
+                }
+            }
+
+            bindEvents() {
+                document.getElementById('nextBtn').addEventListener('click', () => this.nextStep());
+                document.getElementById('prevBtn').addEventListener('click', () => this.prevStep());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+            }
+
+            async nextStep() {
+                if (this.currentStep < this.totalSteps) {
+                    this.currentStep++;
+                    await this.executeStep(this.currentStep);
+                    this.updateUI();
+                }
+            }
+
+            async prevStep() {
+                if (this.currentStep > 0) {
+                    this.deactivateStep(this.currentStep);
+                    this.currentStep--;
+                    this.updateUI();
+                }
+            }
+
+            reset() {
+                this.currentStep = 0;
+                this.deactivateAll();
+                this.updateUI();
+            }
+
+            deactivateAll() {
+                this.components.forEach(comp => comp.classList.remove('active'));
+                this.flowLines.forEach(line => line.classList.remove('active'));
+                document.getElementById('explanationText').innerHTML = '点击"下一步"开始Spring MVC流程演示';
+            }
+
+            deactivateStep(step) {
+                // 清除当前步骤的激活状态
+                if (step === 1) this.components[0].classList.remove('active');
+                if (step === 2) {
+                    this.components[1].classList.remove('active');
+                    this.flowLines[0].classList.remove('active');
+                }
+                if (step === 3) {
+                    this.components[2].classList.remove('active');
+                    this.flowLines[1].classList.remove('active');
+                }
+                if (step === 4) {
+                    this.components[3].classList.remove('active');
+                    this.flowLines[2].classList.remove('active');
+                }
+                if (step === 5) {
+                    this.components[4].classList.remove('active');
+                    this.flowLines[3].classList.remove('active');
+                }
+                if (step === 6) {
+                    this.components[5].classList.remove('active');
+                    this.flowLines[4].classList.remove('active');
+                }
+                if (step === 7) {
+                    this.components[6].classList.remove('active');
+                    this.flowLines[5].classList.remove('active');
+                }
+            }
+
+            async executeStep(step) {
+                const explanations = {
+                    1: `
+                        <h3>1. 客户端发起请求</h3>
+                        <p>用户在浏览器中输入URL或点击链接，发起HTTP请求到服务器。</p>
+                        <div class="code-block">
+                            GET <span class="highlight">/user/list</span> HTTP/1.1<br>
+                            Host: localhost:8080<br>
+                            User-Agent: Mozilla/5.0
+                        </div>
+                        <p>这是整个Spring MVC流程的起点，所有的用户请求都从这里开始。</p>
+                    `,
+                    2: `
+                        <h3>2. DispatcherServlet接收请求</h3>
+                        <p>DispatcherServlet作为前端控制器，接收所有的HTTP请求。它是Spring MVC的核心组件，负责协调整个流程。</p>
+                        <div class="code-block">
+                            <span class="highlight">@WebServlet</span>(urlPatterns = "/")<br>
+                            public class <span class="highlight">DispatcherServlet</span> extends HttpServlet {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;// 统一处理所有请求<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;// 分发给相应的处理器<br>
+                            }
+                        </div>
+                        <p>DispatcherServlet是Spring MVC的入口点，实现了控制器的统一管理和请求分发。</p>
+                    `,
+                    3: `
+                        <h3>3. HandlerMapping查找处理器</h3>
+                        <p>HandlerMapping根据请求URL查找对应的Controller处理器。它通过映射规则确定哪个Controller应该处理当前请求。</p>
+                        <div class="code-block">
+                            <span class="highlight">@RequestMapping("/user")</span><br>
+                            public class UserController {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;<span class="highlight">@GetMapping("/list")</span><br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;public String listUsers() {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// 处理用户列表请求<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+                            }
+                        </div>
+                        <p>HandlerMapping维护了URL到Controller方法的映射关系，确保请求能找到正确的处理逻辑。</p>
+                    `,
+                    4: `
+                        <h3>4. Controller处理业务逻辑</h3>
+                        <p>Controller接收请求参数，执行业务逻辑，返回ModelAndView对象。ModelAndView包含了模型数据和视图名称。</p>
+                        <div class="code-block">
+                            <span class="highlight">@GetMapping("/list")</span><br>
+                            public ModelAndView listUsers() {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;List&lt;User&gt; users = <span class="highlight">userService.getAllUsers()</span>;<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;ModelAndView mav = new ModelAndView("userList");<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;mav.addObject("users", users);<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;return mav;<br>
+                            }
+                        </div>
+                        <p>Controller是实际的业务处理层，负责处理具体的业务逻辑并将结果封装到ModelAndView中。</p>
+                    `,
+                    5: `
+                        <h3>5. 返回ModelAndView</h3>
+                        <p>Controller处理完成后，将ModelAndView对象返回给DispatcherServlet。这个对象包含了视图名称和模型数据。</p>
+                        <div class="code-block">
+                            // ModelAndView结构<br>
+                            {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;"viewName": <span class="highlight">"userList"</span>,<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;"model": {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"users": [User1, User2, ...]<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+                            }
+                        </div>
+                        <p>ModelAndView是Model和View的组合，为后续的视图解析提供了必要的信息。</p>
+                    `,
+                    6: `
+                        <h3>6. ViewResolver解析视图</h3>
+                        <p>ViewResolver根据ModelAndView中的视图名称找到对应的视图模板文件，并创建View对象。</p>
+                        <div class="code-block">
+                            <span class="highlight">@Bean</span><br>
+                            public InternalResourceViewResolver viewResolver() {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;InternalResourceViewResolver resolver =<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;new InternalResourceViewResolver();<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;resolver.setPrefix("/WEB-INF/views/");<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;resolver.setSuffix(".jsp");<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;return resolver;<br>
+                            }
+                        </div>
+                        <p>ViewResolver负责将逻辑视图名称转换为实际的视图对象，常见的实现有JSP、Thymeleaf等视图解析器。</p>
+                    `,
+                    7: `
+                        <h3>7. View渲染响应</h3>
+                        <p>View使用ModelAndView中的模型数据渲染页面，生成最终的HTML响应返回给客户端浏览器。</p>
+                        <div class="code-block">
+                            // userlist.jsp 示例<br>
+                            &lt;%@ page contentType="text/html;charset=UTF-8" %&gt;<br>
+                            &lt;%@ taglib prefix="c"<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;uri="http://java.sun.com/jsp/jstl/core" %&gt;<br>
+                            &lt;html&gt;<br>
+                            &lt;body&gt;<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&lt;c:forEach items="${users}" var="user"&gt;<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;p&gt;${user.name}&lt;/p&gt;<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&lt;/c:forEach&gt;<br>
+                            &lt;/body&gt;<br>
+                            &lt;/html&gt;
+                        </div>
+                        <p>最终用户在浏览器中看到渲染好的HTML页面，完成整个Spring MVC请求处理流程。</p>
+                    `
+                };
+
+                // 激活对应组件
+                switch(step) {
+                    case 1:
+                        this.components[0].classList.add('active');
+                        break;
+                    case 2:
+                        this.components[1].classList.add('active');
+                        this.flowLines[0].classList.add('active');
+                        await this.showDataFlow(0, 1);
+                        break;
+                    case 3:
+                        this.components[2].classList.add('active');
+                        this.flowLines[1].classList.add('active');
+                        await this.showDataFlow(1, 2);
+                        break;
+                    case 4:
+                        this.components[3].classList.add('active');
+                        this.flowLines[2].classList.add('active');
+                        await this.showDataFlow(2, 3);
+                        break;
+                    case 5:
+                        this.components[4].classList.add('active');
+                        this.flowLines[3].classList.add('active');
+                        await this.showDataFlow(3, 4);
+                        break;
+                    case 6:
+                        this.components[5].classList.add('active');
+                        this.flowLines[4].classList.add('active');
+                        await this.showDataFlow(4, 5);
+                        break;
+                    case 7:
+                        this.components[6].classList.add('active');
+                        this.flowLines[5].classList.add('active');
+                        await this.showDataFlow(5, 6);
+                        break;
+                }
+
+                document.getElementById('explanationText').innerHTML = explanations[step];
+            }
+
+            showDataFlow(fromIndex, toIndex) {
+                return new Promise(resolve => {
+                    const fromComp = this.components[fromIndex];
+                    const toComp = this.components[toIndex];
+                    
+                    const fromRect = fromComp.getBoundingClientRect();
+                    const toRect = toComp.getBoundingClientRect();
+                    const containerRect = document.getElementById('animationContainer').getBoundingClientRect();
+                    
+                    const dataFlow = document.createElement('div');
+                    dataFlow.className = 'data-flow';
+                    dataFlow.style.left = (fromRect.left - containerRect.left + fromRect.width/2) + 'px';
+                    dataFlow.style.top = (fromRect.top - containerRect.top + fromRect.height/2) + 'px';
+                    dataFlow.style.setProperty('--tx', (toRect.left - fromRect.left) + 'px');
+                    dataFlow.style.setProperty('--ty', (toRect.top - fromRect.top) + 'px');
+                    
+                    document.getElementById('animationContainer').appendChild(dataFlow);
+                    
+                    setTimeout(() => {
+                        dataFlow.classList.add('show', 'move');
+                    }, 100);
+                    
+                    setTimeout(() => {
+                        dataFlow.remove();
+                        resolve();
+                    }, 1100);
+                });
+            }
+
+            updateUI() {
+                document.getElementById('currentStep').textContent = this.currentStep;
+                
+                // 更新按钮状态
+                document.getElementById('prevBtn').disabled = this.currentStep === 0;
+                document.getElementById('nextBtn').disabled = this.currentStep === this.totalSteps;
+                
+                if (this.currentStep === this.totalSteps) {
+                    document.getElementById('nextBtn').textContent = '演示完成';
+                } else {
+                    document.getElementById('nextBtn').textContent = '下一步';
+                }
+            }
+        }
+
+        // 初始化演示
+        document.addEventListener('DOMContentLoaded', () => {
+            new SpringMVCDemo();
+        });
+    </script>
+</body>
+</html>
